@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "functions": {
+    "api/inbound-email.js": {
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/inbound-email",
+      "dest": "/api/inbound-email.js"
+    },
+    {
+      "src": "/api/emails/tenders",
+      "dest": "/api/inbound-email.js"
+    },
+    {
+      "src": "/api/emails",
+      "dest": "/api/inbound-email.js"
+    }
+  ]
+}
