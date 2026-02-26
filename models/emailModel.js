@@ -19,6 +19,12 @@ const rfpEmailSchema = new mongoose.Schema(
         storageUrl: { type: String, default: null },
       },
     ],
+    //links extracted from body
+    extractedLinks: [
+      {
+        url: { type: String, default: null },
+      },
+    ],
 
     // Tender detection metadata
     isTender: { type: Boolean, required: true, default: false },
