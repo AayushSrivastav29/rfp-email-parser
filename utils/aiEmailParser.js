@@ -1,7 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 dotenv.config();
-import RFPEmail from "../models/emailModel.js";
 
 // Initialize Gemini
 const geminiAI = new GoogleGenAI({
@@ -40,10 +39,10 @@ Constraint: If a field is not present, set its value to null.
 Output Format: Return ONLY a valid JSON array. Do not include conversational text, markdown formatting blocks, or explanations.
 
 Input Data:
-${emailPayload}
+${JSON.stringify(emailPayload)}
 `;
     const response = await geminiAI.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: [
         {
           role: "user",
@@ -59,7 +58,9 @@ ${emailPayload}
         max_tokens: 2000,
       },
     });
+    console.log("response", response.candidates[0].content);
     const extractedContent = response.candidates[0].content.parts[0].text;
+    console.log("extractedContent", extractedContent);
     // Clean up the response to ensure it's valid JSON
     let cleanedContent = extractedContent;
     if (cleanedContent.startsWith("```json")) {
@@ -72,6 +73,7 @@ ${emailPayload}
     }
 
     const parsedData = await JSON.parse(cleanedContent);
+    console.log("parsedData", parsedData);
     return parsedData;
   } catch (error) {
     console.error("AI parsing error:", error);
@@ -121,7 +123,7 @@ ${JSON.stringify(data)}
 `;
 
     const response = await geminiAI.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: [
         {
           role: "user",

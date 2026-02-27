@@ -11,7 +11,7 @@ export const TARGET_NAICS_CODES = [
 
 export const KEYWORDS = [
   "psychometric",
-  "assessment centre",
+  "assessment center",
   "recruitment services",
   "talent development",
   "CPV 79600000",

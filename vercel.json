@@ -1,10 +1,11 @@
 {
   "version": 2,
-  "functions": {
-    "api/inbound-email.js": {
-      "maxDuration": 30
+  "crons": [
+    {
+      "path": "/api/export-to-sheets",
+      "schedule": "0 0 * * *"
     }
-  },
+  ],
   "routes": [
     {
       "src": "/api/inbound-email",

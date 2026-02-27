@@ -4,6 +4,7 @@ import path from "path";
 import { Parser } from "@json2csv/plainjs";
 import { aifilterEmails } from "../utils/aiEmailParser.js";
 import { TARGET_NAICS_CODES, KEYWORDS } from "../config/constants.js";
+import { appendEmailsToSheet } from "../services/googleSheetsService.js";
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -20,18 +21,19 @@ const FILTER_REGEX = [
 export async function filterAndStoreEmails() {
   // Find emails matching regex and not already filtered
   let emails = null;
-  emails = await RFPEmail.find({ isFiltered: { $ne: true } }).lean();
-  console.log("emails", emails);
-  let results = await aifilterEmails(emails);
+  emails = await RFPEmail.find({ isFiltered: false }).lean();
+
+  let results = null ;
+  results = await aifilterEmails(emails);
   console.log("results", results);
   if (!results) {
     results = await RFPEmail.find({
       $or: [
         { subject: { $regex: FILTER_REGEX, $options: "i" } },
-        { textBody: { $regex: FILTER_REGEX, $options: "i" } },
-        { htmlBody: { $regex: FILTER_REGEX, $options: "i" } },
+        { tenderTitle: { $regex: FILTER_REGEX, $options: "i" } },
+        { description: { $regex: FILTER_REGEX, $options: "i" } },
       ],
-      isFiltered: { $ne: true },
+      isFiltered: false,
     }).lean();
     console.log("results manual", results);
   }
@@ -42,7 +44,7 @@ export async function filterAndStoreEmails() {
       { $set: { isFiltered: true } },
     );
   }
-  return results.length;
+  return results;
 }
 
 /**
@@ -71,24 +73,39 @@ export async function exportFilteredEmailsToCSV() {
   return filePath;
 }
 
-// Schedule the filter and export job to run every day at midnight
 
-// For cron scheduling only
-// export function scheduleFilteredEmailExportCron() {
-//   cron.schedule("0 0 * * *", async () => {
-//     await filterAndStoreEmails();
-//     await exportFilteredEmailsToCSV();
-//     console.log("[Cron] Filtered emails processed and exported to CSV.");
-//   });
-// }
+export async function exportFilteredEmailsHandler() {
+  try {
+    // Step 1: Filter + mark emails
+    const newlyFiltered = await filterAndStoreEmails();
+
+    // Step 2: Append to Google Sheet
+    let sheetRowsAdded = 0;
+    if (newlyFiltered.length > 0) {
+      sheetRowsAdded = await appendEmailsToSheet(newlyFiltered);
+    }
+
+    console.log("newlyFiltered", newlyFiltered.length);
+    console.log("sheetRowsAdded", sheetRowsAdded);
+    return {
+      success: true,
+      filteredCount: newlyFiltered.length,
+      sheetRowsAdded,
+    };
+  } catch (err) {
+    console.error("[exportFilteredEmailsHandler] Error:", err);
+    return { success: false, error: err.message };
+  }
+}
+
 
 // Express route handler for manual export
-export async function exportFilteredEmailsHandler(_req, res) {
+export async function exportFilteredEmailsTosheetHandler() {
   try {
     const filteredCount = await filterAndStoreEmails();
-    const filePath = await exportFilteredEmailsToCSV();
-    res.json({ success: true, filteredCount, filePath });
+    const filePath = await exportFilteredEmailsHandler();
+    return { success: true, filteredCount, filePath };
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    return { success: false, error: err.message };
   }
 }

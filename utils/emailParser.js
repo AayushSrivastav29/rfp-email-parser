@@ -15,23 +15,26 @@ export async function parseInboundEmail(payload) {
   results = await aiEmailParser(payload);
   console.log("ai email parsing results", results);
   //step 2: fallback manual parsing
-  if (!results) {
+  if (!results || results.length === 0 || results === null) {
     results = manualParseRfpFromHtml(payload.HtmlBody);
     console.log("manual email parsing results", results);
     parsingMethod = "manual";
   }
+  const extractedLinks = (results.extractedLinks || results[0].extractedLinks).map((link) =>
+    typeof link === "string" ? { url: link } : link,
+  );
 
   return {
     messageId: payload.MessageID || null,
     fromEmail,
     subject,
-    tenderTitle : results.tenderTitle,
-    issuingAuthority : results.issuingAuthority,
-    deadline: results.deadline,
-    contractValue: results.contractValue,
-    description: results.description,
+    tenderTitle: results.tenderTitle || results[0].tenderTitle,
+    issuingAuthority: results.issuingAuthority || results[0].issuingAuthority,
+    deadline: results.deadline || results[0].deadline,
+    contractValue: results.contractValue || results[0].contractValue,
+    description: results.description || results[0].description,
     date: payload.Date ? new Date(payload.Date) : new Date(),
-    extractedLinks : results.extractedLinks,
+    extractedLinks,
     rawPayload: payload, // Store original for debugging / re-processing
     parsingMethod,
   };
