@@ -7,39 +7,26 @@ const rfpEmailSchema = new mongoose.Schema(
     messageId: { type: String, unique: true, sparse: true },
     subject: { type: String, required: true },
     fromEmail: { type: String, required: true },
-    fromName: { type: String },
-    fromDomain: { type: String },
     date: { type: Date },
-    textBody: { type: String },
-    htmlBody: { type: String },
-    attachments: [
-      {
-        name: String,
-        contentType: String,
-        storageUrl: { type: String, default: null },
-      },
-    ],
+    deadline: { type: String , default: null},
+    tenderTitle: { type: String, default: null },
+    issuingAuthority: { type: String, default: null },
+    contractValue: { type: String, default: null },
+    description: { type: String, default: null },
+
     //links extracted from body
     extractedLinks: [
       {
-        url: { type: String, default: null },
+        url: {type: String, default: null},
       },
     ],
-
-    // Tender detection metadata
-    isTender: { type: Boolean, required: true, default: false },
-    detectedBy: { type: String, default: null }, // "domain" | "emailPattern" | "subject"
-    detectedValue: { type: String, default: null }, // The matched value
-
     // Raw payload for debugging / re-processing
     rawPayload: { type: mongoose.Schema.Types.Mixed },
 
-    // Processing status
-    status: {
-      type: String,
-      enum: ["received", "processed", "error"],
-      default: "received",
-    },
+    isFiltered:{
+      type: Boolean,
+      default: false,
+    }
   },
   {
     timestamps: true, // createdAt / updatedAt

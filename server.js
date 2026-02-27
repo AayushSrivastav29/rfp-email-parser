@@ -11,9 +11,6 @@ async function start() {
       console.log(
         `[Server] RFP Email Parser running on http://localhost:${PORT}`,
       );
-      console.log(
-        `[Server] Webhook endpoint: POST http://localhost:${PORT}/api/inbound-email`,
-      );
     });
   } catch (err) {
     console.error("[Server] Failed to start:", err.message);

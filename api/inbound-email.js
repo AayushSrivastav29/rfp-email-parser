@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     const payload = req.body;
 
     if (!payload || typeof payload !== "object") {
-      console.warn("[Webhook] Empty or invalid payload received.");
+      console.log("[Webhook] Empty or invalid payload received.");
       return res.status(400).json({ error: "Invalid payload." });
     }
 
@@ -35,24 +35,18 @@ export default async function handler(req, res) {
       `[Webhook] Parsed email | from=${parsedEmail.fromEmail} | subject="${parsedEmail.subject}"`,
     );
 
-    // 3. Tender Detection
-    const detection = detectTenderEmail(parsedEmail);
-    console.log(
-      `[Webhook] Detection result | isTender=${detection.isTender} | matchedBy=${detection.matchedBy} | value=${detection.matchedValue}`,
-    );
-
     //  4. Save to MongoDB
-    const saved = await saveEmail(parsedEmail, detection);
+    const saved = await saveEmail(parsedEmail);
 
     const elapsed = Date.now() - startTime;
     console.log(`[Webhook] Done in ${elapsed}ms | docId=${saved._id}`);
 
     // 5. Save success/skipped log
     await saveLog({
-      status: detection.isTender ? "success" : "skipped",
+      status: parsedEmail && saved ? "success" : "skipped",
       sender: parsedEmail.fromEmail,
       subject: parsedEmail.subject,
-      reason: detection.isTender ? "Tender matched" : "Not a tender",
+      reason: parsedEmail && saved ? "email saved successfully" : "Not saved",
     });
 
     // 6. Respond 200 to Postmark
@@ -60,9 +54,6 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       messageId: parsedEmail.messageId,
-      isTender: detection.isTender,
-      detectedBy: detection.matchedBy,
-      detectedValue: detection.matchedValue,
       dbId: saved._id,
       elapsed: `${elapsed}ms`,
     });
