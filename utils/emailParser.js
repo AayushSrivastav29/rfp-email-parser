@@ -20,7 +20,11 @@ export async function parseInboundEmail(payload) {
     console.log("manual email parsing results", results);
     parsingMethod = "manual";
   }
-  const extractedLinks = (results.extractedLinks || results[0].extractedLinks).map((link) =>
+  const rawLinks = Array.isArray(results.extractedLinks)
+    ? results.extractedLinks
+    : results[0]?.extractedLinks || [];
+
+  const extractedLinks = rawLinks.map((link) =>
     typeof link === "string" ? { url: link } : link,
   );
 
