@@ -26,7 +26,11 @@ const rfpEmailSchema = new mongoose.Schema(
     isFiltered:{
       type: Boolean,
       default: false,
-    }
+    },
+    parsingMethod: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true, // createdAt / updatedAt

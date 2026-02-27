@@ -66,8 +66,7 @@ export async function exportFilteredEmailsToCSV() {
   const csv = parser.parse(filteredEmails);
 
   const exportDir = path.join("exports");
-  if (!fs.existsSync(exportDir)) fs.mkdirSync(exportDir, { recursive: true });
-  const filePath = path.join(exportDir, `filtered_emails_${Date.now()}.csv`);
+  const filePath = path.join(exportDir, `filteredRfps.csv`);
   fs.writeFileSync(filePath, csv);
   return filePath;
 }

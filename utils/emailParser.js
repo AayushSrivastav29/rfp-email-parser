@@ -11,11 +11,14 @@ export async function parseInboundEmail(payload) {
 
   // step 1 : ai parsing
   let results = null;
+  let parsingMethod = "ai";
   results = await aiEmailParser(payload);
-
+  console.log("ai email parsing results", results);
   //step 2: fallback manual parsing
   if (!results) {
     results = manualParseRfpFromHtml(payload.HtmlBody);
+    console.log("manual email parsing results", results);
+    parsingMethod = "manual";
   }
 
   return {
@@ -30,5 +33,6 @@ export async function parseInboundEmail(payload) {
     date: payload.Date ? new Date(payload.Date) : new Date(),
     extractedLinks : results.extractedLinks,
     rawPayload: payload, // Store original for debugging / re-processing
+    parsingMethod,
   };
 }
