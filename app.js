@@ -2,7 +2,6 @@ import express from "express";
 import inboundEmailHandler from "./api/inbound-email.js";
 import { connectDB } from "./config/db.js";
 import {
-  findTenderEmails,
   findAllEmails,
 } from "./repositories/emailRepository.js";
 import { exportFilteredEmailsHandler } from "./repositories/filterEmailRepository.js";
