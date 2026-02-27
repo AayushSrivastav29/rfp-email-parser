@@ -1,11 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+dotenv.config();
 
 // Initialize Gemini
 const geminiAI = new GoogleGenAI({
-  apiKey: "AIzaSyCTrHucqsPRLuitww-0TMrjlx8kAq0K9U8",
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 // AI-powered parsing function
