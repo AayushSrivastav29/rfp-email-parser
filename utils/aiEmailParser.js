@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 dotenv.config();
+import RFPEmail from "../models/emailModel.js";
 
 // Initialize Gemini
 const geminiAI = new GoogleGenAI({
@@ -74,30 +75,84 @@ ${emailPayload}
     return parsedData;
   } catch (error) {
     console.error("AI parsing error:", error);
-    throw new Error("Failed to parse email content with AI");
+    return null;
   }
 };
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
 
-// // Read the json-body.json file
-// const jsonPath = path.join(__dirname, "../json-body.json");
-// const jsonData = await fs.readFile(jsonPath, "utf-8");
+export const aifilterEmails = async (data) => {
+  try {
+    const prompt = `
+    Role: You are a Strategic Procurement Analyst for Testlify, a company specializing in talent assessment, psychometric testing, and AI-powered recruitment software. Your goal is to filter a list of tenders and identify only those that align with the company's core business.
 
-// const emailPayload = jsonData;
+Company Profile & Alignment Criteria:
+Testlify is a match if the tender falls into EITHER of the following groups:
 
-// const result = await aiEmailParser(emailPayload);
-// console.log(result);
+Technical Software Services (NAICS Focus): Any project involving custom software development, IT systems design, cloud hosting, or infrastructure.
 
-// [
-//   {
-//     "tenderTitle": "Conference Registration Platform for the Colorado Judicial Department",
-//     "subject": "Fwd: Colorado Judicial Department Has Published a New Solicitation Matching Your Profile",
-//     "fromEmail": "aayush.srivastav@testlify.com",
-//     "issuingAuthority": "Colorado Judicial Department",     
-//     "closingDate": "2026-04-01",
-//     "contractValue": null,    
-//     "description": "The Colorado Judicial Department is seeking a vendor to provide a conference registration platform to support the planning process, attendee management, hotel lodging logistics, and agenda/session registration. The platform must support event websites and a mobile app to feature speakers and session specific documents.",
-//     "documentLink": "https://u2200517.ct.sendgrid.net/ls/click?upn=u001.zOeG8zEbAFNSspabcbtBA1bXeOUCweFygrw2gTPMScah7bl5O-2BW5IqAa4qwGbLFCM48bRrxtDEaRRpzvn10ZwP7syrlvl16YJXSM2FdmrFcPehX32GtH4ynY0n6dwTOfzhde3qD5dMZMIvD3BmkyA-2FtAWzWLbc8p1f7-2Fgk-2BwiSMlgdHYXSPiDdemLbz3N3B7Y-2FTuLWiBHXrsQX-2BqENAAPn6c4I6nQg5j9oMKFiar3Ip2JexNFAXKPKCtM-2BNoN3yd3PMRXZSRD-2Bel5jJxF-2BIC6w-3D-3DGXZu_7ol4wTHOP9-2FhY-2F1HpKCFFuLNO7sPL9-2BDcklmqTnVeUJqbBJoSKv0d-2BtvD2Ujepcm3OiR4aNBiw-2BIRsfKjl344COMTnCgKXukR1h-2FqIYam7MnqQ00WGCCFM1Sb6FIg3B-2BxoOvxxxSXIbBSl-2BNWr-2BIDEVEz6bEX-2BWgL350IUgEbGHI8zufKYvew6Rjfy4c-2F-2FkBReZUhrmemZ0Bt2gQy0p6QY1vMGo82IWxhR1J-2B924XRRa1Kwn6Kl4UdUyXs71Zh-2B3NlJ2BB-2FLvok59iKx-2F1BCx0tfvYAZN-2BW3p4b31xl2mOkFvGj2cd0sz9oN3CTkgonrjtMoKksI88-2FjnyyGGhy-2FIQ-3D-3D"
-//   }
-// ]
+Target Codes: 541511, 541512, 513210, 541519, 541513, 541330, 518210.
+
+Assessment & Talent Services (Keyword Focus): Any project involving the following terms or their semantic equivalents:
+
+Keywords: psychometric, assessment centre, recruitment services, talent development, CPV 79600000, 79600000, 79635000, CPV 79635000, AI interviewing, Workforce development, Leadership assessment.
+
+Instructions:
+
+Review the tenderTitle, subject, and description of each object in the provided JSON array.
+
+Assign a Relevance Score (0-100) based on how closely the requirements match Testlify's services.
+
+Assign a Classification:
+
+High Priority: Score 80-100 (Direct match for assessment software or custom programming).
+
+Medium: Score 50-79 (Broad HR services or general IT support that might include a software component).
+
+Low: Score 20-49 (Tangentially related, e.g., general consulting).
+
+Irrelevant: Score 0-19 (Construction, manual labor, hardware-only, or unrelated sectors).
+
+Negative Filter: Explicitly reject tenders for "Staff Augmentation" or "Temporary Staffing" unless they specifically require an assessment platform or AI screening tool.
+
+Output Format:
+Return ONLY a valid JSON array containing the original data plus three new keys: relevanceScore, classification, and matchReasoning. Do not include markdown formatting or conversational text.
+
+Input Data:
+${JSON.stringify(data)}
+`;
+
+    const response = await geminiAI.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        max_tokens: 2000,
+      },
+    });
+    const extractedContent = response.candidates[0].content.parts[0].text;
+    // Clean up the response to ensure it's valid JSON
+    let cleanedContent = extractedContent;
+    if (cleanedContent.startsWith("```json")) {
+      cleanedContent = cleanedContent
+        .replace(/```json\n?/, "")
+        .replace(/```$/, "");
+    }
+    if (cleanedContent.startsWith("```")) {
+      cleanedContent = cleanedContent.replace(/```\n?/, "").replace(/```$/, "");
+    }
+
+    const parsedData = await JSON.parse(cleanedContent);
+    return parsedData;
+  } catch (error) {
+    console.error("AI parsing error:", error);
+    return null;
+  }
+};
