@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid payload." });
     }
 
-    const parsedEmail = parseInboundEmail(payload);
+    const parsedEmail = await parseInboundEmail(payload);
     console.log(
       `[Webhook] Parsed email | from=${parsedEmail.fromEmail} | subject="${parsedEmail.subject}"`,
     );
