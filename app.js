@@ -18,7 +18,6 @@ app.use((req, _res, next) => {
 });
 
 //  Webhook Route
-// This mirrors the Vercel serverless function path so local dev works identically
 app.post("/api/inbound-email", inboundEmailHandler);
 //cron job schedule
 // const cronJob = new cron.CronJob(

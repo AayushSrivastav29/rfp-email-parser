@@ -103,7 +103,7 @@ export async function exportFilteredEmailsHandler() {
 export async function exportFilteredEmailsTosheetHandler() {
   try {
     const filteredCount = await filterAndStoreEmails();
-    const filePath = await exportFilteredEmailsHandler();
+    const filePath = await exportFilteredEmailsToCSV();
     return { success: true, filteredCount, filePath };
   } catch (err) {
     return { success: false, error: err.message };

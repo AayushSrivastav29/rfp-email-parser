@@ -1,4 +1,6 @@
 import { google } from "googleapis";
+import dotenv from "dotenv";
+dotenv.config();
 
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
@@ -15,18 +17,15 @@ const HEADERS = [
   "Relevance Score",
   "Classification",
 ];
-const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n');
+// // const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n');
+// const privateKey = Buffer.from(process.env.GOOGLE_PRIVATE_KEY, 'base64');
+const credentials = JSON.parse(
+  process.env.GOOGLE_CREDS
+);
 
 async function getAuthClient() {
   const auth = new google.auth.GoogleAuth({
-    credentials: {
-      type: "service_account",
-      project_id: process.env.GOOGLE_PROJECT_ID,
-      private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
-      private_key: privateKey,
-      client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      client_id: process.env.GOOGLE_CLIENT_ID,
-    },
+    credentials,
     scopes: SCOPES,
   });
   return auth.getClient();
@@ -62,7 +61,7 @@ export async function appendEmailsToSheet(emails) {
   if (!emails || emails.length === 0) return 0;
 
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
-  const sheetName = process.env.GOOGLE_SHEET_NAME || "filtered rfps";
+  const sheetName = process.env.GOOGLE_SHEET_NAME || "filteredRfps";
 
   const authClient = await getAuthClient();
   const sheets = google.sheets({ version: "v4", auth: authClient });
