@@ -1,6 +1,5 @@
 import { connectDB } from "../config/db.js";
 import { parseInboundEmail } from "../utils/emailParser.js";
-import { detectTenderEmail } from "../utils/tenderDetector.js";
 import { saveEmail } from "../repositories/emailRepository.js";
 import { saveLog } from "../repositories/logsRepository.js";
 
