@@ -100,7 +100,7 @@ export async function exportFilteredEmailsHandler() {
 
 
 // Express route handler for manual export
-export async function exportFilteredEmailsTosheetHandler() {
+export async function exportFilteredEmailsToExportsHandler() {
   try {
     const filteredCount = await filterAndStoreEmails();
     const filePath = await exportFilteredEmailsToCSV();
