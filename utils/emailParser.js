@@ -17,7 +17,8 @@ export async function parseInboundEmail(payload) {
 
   // Step 1: AI Parsing
   let parsingMethod = "ai";
-  let tenders = null;
+  let tenders = await aiEmailParser(payload.TextBody);
+  console.log(`[emailParser] AI returned ${tenders?.length ?? 0} tender(s)`);
 
   // Step 2: Fallback – manual parsing
   if (!Array.isArray(tenders) || tenders.length === 0) {
