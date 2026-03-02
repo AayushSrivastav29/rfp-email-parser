@@ -2,49 +2,85 @@ import { aiEmailParser } from "./aiEmailParser.js";
 import { manualParseRfpFromHtml } from "./manualEmailParser.js";
 
 /**
- * Parses a raw Postmark inbound email webhook payload into a
- * normalized, database-ready object.
+ * Parses a raw Postmark inbound email webhook payload.
+ *
+ * Supports emails that contain MULTIPLE tenders in a single payload.
+ * Always returns an Array of database-ready objects — one per tender found.
+ * If no tenders are found, returns an array with a single "empty" record so
+ * the email is still stored for debugging.
  */
 export async function parseInboundEmail(payload) {
   const fromEmail = payload.FromFull?.Email || payload.From || "";
   const subject = payload.Subject || "(No Subject)";
+  const date = payload.Date ? new Date(payload.Date) : new Date();
+  const messageId = payload.MessageID || null;
 
-  // step 1 : ai parsing
-  let results = null;
+  // Step 1: AI Parsing
   let parsingMethod = "ai";
-  results = await aiEmailParser(payload);
-  console.log("ai email parsing results", results);
-  //step 2: fallback manual parsing
-  if (!results || results.length === 0 || results === null) {
-    results = manualParseRfpFromHtml(payload.HtmlBody);
-    console.log("manual email parsing results", results);
+  let tenders = null;
+
+  // Step 2: Fallback – manual parsing
+  if (!Array.isArray(tenders) || tenders.length === 0) {
+    const manualResult = manualParseRfpFromHtml(payload.HtmlBody);
+    console.log("[emailParser] Falling back to manual parsing", manualResult.length);
+
+    if (manualResult) {
+      // manualParseRfpFromHtml returns an array of objects
+      tenders = [...manualResult];
+    } else {
+      tenders = [];
+    }
     parsingMethod = "manual";
   }
-  
-  let extractedLinks=null;
-  if(typeof(results.extractedLinks) === String){
-    extractedLinks = [{url:results.extractedLinks}]
+
+  // Step 3: Build one DB document per tender
+  if (tenders.length === 0) {
+    // Nothing could be parsed — still save one raw record
+    console.warn("[emailParser] No tenders extracted; saving raw record only.");
+    return [
+      {
+        messageId,
+        fromEmail,
+        subject,
+        date,
+        tenderTitle: null,
+        issuingAuthority: null,
+        deadline: null,
+        contractValue: null,
+        description: null,
+        extractedLinks: [],
+        parsingMethod,
+      },
+    ];
   }
-   const rawLinks = Array.isArray(results.extractedLinks)
-    ? results.extractedLinks
-    : results[0]?.extractedLinks || [];
 
-  extractedLinks = rawLinks.map((link) =>
-    typeof link === "string" ? { url: link } : link,
-  );
+  return tenders.map((tender, idx) => {
+    // Normalise extractedLinks → [{url}] format
+    const rawLinks = Array.isArray(tender.extractedLinks)
+      ? tender.extractedLinks
+      : tender.extractedLinks
+        ? [tender.extractedLinks]
+        : [];
 
-  return {
-    messageId: payload.MessageID || null,
-    fromEmail,
-    subject,
-    tenderTitle: results.tenderTitle || results[0].tenderTitle,
-    issuingAuthority: results.issuingAuthority || results[0].issuingAuthority,
-    deadline: results.deadline || results[0].deadline,
-    contractValue: results.contractValue || results[0].contractValue,
-    description: results.description || results[0].description,
-    date: payload.Date ? new Date(payload.Date) : new Date(),
-    extractedLinks,
-    rawPayload: payload, // Store original for debugging / re-processing
-    parsingMethod,
-  };
+    const extractedLinks = rawLinks.map((link) =>
+      typeof link === "string" ? { url: link } : link,
+    );
+    console.log(
+      `[emailParser] Tender ${idx + 1}: "${tender.tenderTitle ?? "untitled"}"`,
+    );
+
+    return {
+      messageId,
+      fromEmail,
+      subject,
+      date,
+      tenderTitle: tender.tenderTitle ?? null,
+      issuingAuthority: tender.issuingAuthority ?? null,
+      deadline: tender.deadline ?? null,
+      contractValue: tender.contractValue ?? null,
+      description: tender.description ?? null,
+      extractedLinks,
+      parsingMethod,
+    };
+  });
 }

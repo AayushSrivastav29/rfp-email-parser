@@ -1,11 +1,13 @@
 import { connectDB } from "../config/db.js";
 import { parseInboundEmail } from "../utils/emailParser.js";
-import { saveEmail } from "../repositories/emailRepository.js";
+import { saveEmails } from "../repositories/emailRepository.js";
 import { saveLog } from "../repositories/logsRepository.js";
 
 /**
  * Flow:
- *   Postmark → POST /api/inbound-email → parse → detect → save to MongoDB
+ *   Postmark → POST /api/inbound-email → parse → save each tender → MongoDB
+ * A single email payload may contain multiple tenders.
+ * parseInboundEmail() always returns an Array; saveEmails() persists them all.
  */
 
 export default async function handler(req, res) {
@@ -21,7 +23,7 @@ export default async function handler(req, res) {
     // 1. Connect to DB
     await connectDB();
 
-    // 2. Parse Postmark Payload
+    // 2. Validate payload
     const payload = req.body;
 
     if (!payload || typeof payload !== "object") {
@@ -29,37 +31,41 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid payload." });
     }
 
-    const parsedEmail = await parseInboundEmail(payload);
+    // 3. Parse → always returns Array<tender>
+    const tenders = await parseInboundEmail(payload);
     console.log(
-      `[Webhook] Parsed email | from=${parsedEmail.fromEmail} | subject="${parsedEmail.subject}"`,
+      `[Webhook] Parsed ${tenders.length} tender(s) | from=${tenders[0]?.fromEmail} | subject="${tenders[0]?.subject}"`,
     );
 
-    //  4. Save to MongoDB
-    const saved = await saveEmail(parsedEmail);
+    // 4. Bulk-save all tenders
+    const savedDocs = await saveEmails(tenders);
 
     const elapsed = Date.now() - startTime;
-    console.log(`[Webhook] Done in ${elapsed}ms | docId=${saved._id}`);
+    console.log(
+      `[Webhook] Done in ${elapsed}ms | saved ${savedDocs.length} tender(s)`,
+    );
 
-    // 5. Save success/skipped log
+    // 5. Log success
     await saveLog({
-      status: parsedEmail && saved ? "success" : "skipped",
-      sender: parsedEmail.fromEmail,
-      subject: parsedEmail.subject,
-      reason: parsedEmail && saved ? "email saved successfully" : "Not saved",
+      status: "success",
+      sender: tenders[0]?.fromEmail,
+      subject: tenders[0]?.subject,
+      reason: savedDocs.length > 0 ? `${savedDocs.length} tender(s) saved successfully` : "No valid tenders found",
     });
 
     // 6. Respond 200 to Postmark
-    // Postmark expects a 2xx within 30s or it will retry
     return res.status(200).json({
       success: true,
-      messageId: parsedEmail.messageId,
-      dbId: saved._id,
+      messageId: tenders[0]?.messageId,
+      tendersFound: tenders.length,
+      savedCount: savedDocs.length,
+      dbIds: savedDocs.map((d) => d._id),
       elapsed: `${elapsed}ms`,
     });
   } catch (error) {
     console.error("[Webhook] Error processing inbound email:", error);
 
-    // Attempt to log the error to db
+    // Attempt to log the error to DB
     try {
       if (req.body) {
         await saveLog({

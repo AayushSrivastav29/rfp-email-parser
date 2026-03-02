@@ -109,7 +109,7 @@ export function manualParseRfpFromHtml(html) {
 
   result.deadline = extractDeadline(html) || extractDeadline(stripTags(html));
 
-  return result;
+  return [result];
 }
 
 /**
@@ -175,9 +175,6 @@ export function extractLinks(body) {
  * Extract deadline from RFP / Tender email body.
  * Runs regex against html and plain text and returns:
  * { rawDeadline, parsedDate } or null if not found.
- *
- * parsedDate is a JS Date object if parsing with Date() succeeded; otherwise null.
- * For best real-world results, use `chrono-node` to parse natural language dates.
  */
 export function extractDeadline(emailBody) {
   if (!emailBody) return null;

@@ -8,15 +8,15 @@ const geminiAI = new GoogleGenAI({
 });
 
 // AI-powered parsing function
-export const aiEmailParser = async (emailPayload) => {
+export const aiEmailParser = async (TextBody) => {
   try {
-    const prompt = `Role: You are a highly accurate Procurement Data Extraction specialist. Your task is to parse inbound email payloads from tender notification services and convert them into a valid JSON array of objects.
+    const prompt = `Role: You are a highly accurate Procurement Data Extraction specialist. Your task is to parse inbound email TextBody from tender notification services and convert them into a valid JSON array of objects.
 
-Input Format: You will receive a JSON payload from a Postmark inbound webhook.
+Input Format: You will receive a JSON TextBody from a Postmark inbound webhook.
 
 Instructions:
 
-Analyze the Subject, TextBody, and HtmlBody fields of the input JSON.
+Analyze the TextBody field of the input JSON.
 
 Identify all individual contract opportunities (tenders) listed in the email.
 
@@ -30,16 +30,16 @@ deadline: The response deadline or proposed deadline or closing date. Format as 
 
 contractValue: The estimated budget or value (if mentioned). Include the currency.
 
-description: A concise 2-3 sentence summary of the scope of work.
+description: An exact description of the tender mentioned in the input.
 
-extractedLinks: The primary URL provided to view the notice or download the bid documents. Ignore any links related to 'Unsubscribe', 'Email Preferences', 'Account Settings', or 'Help Center'. Only extract URLs that link directly to a specific solicitation or project folder.
+extractedLinks: The primary URL provided to view the notice or download the bid documents. Ignore any links related to 'Unsubscribe', 'Email Preferences', 'Account Settings', or 'Help Center'. Only extract URLs that link directly to a specific solicitation or project folder. The URL must NOT contain repeating patterns like "-2F4o-2F3o-2F4o" or similar encoded garbage loops.
 
 Constraint: If a field is not present, set its value to null.
 
 Output Format: Return ONLY a valid JSON array. Do not include conversational text, markdown formatting blocks, or explanations.
 
 Input Data:
-${JSON.stringify(emailPayload)}
+${JSON.stringify(TextBody)}
 `;
     const response = await geminiAI.models.generateContent({
       model: "gemini-2.5-flash",
@@ -54,8 +54,23 @@ ${JSON.stringify(emailPayload)}
         },
       ],
       generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              tenderTitle: { type: "string" },
+              issuingAuthority: { type: "string" },
+              deadline: { type: "string" },
+              contractValue: { type: "string" },
+              description: { type: "string" },
+              extractedLinks: { type: "array", items: { type: "string" } },
+            },
+          },
+        },
         temperature: 0.1,
-        max_tokens: 2000,
+        maxOutputTokens: 8192,
       },
     });
     console.log("response", response.candidates[0].content);
@@ -76,8 +91,12 @@ ${JSON.stringify(emailPayload)}
     console.log("parsedData", parsedData);
     return parsedData;
   } catch (error) {
-    console.error("AI parsing error:", error);
-    return null;
+    if (error instanceof SyntaxError) {
+      console.error("JSON parse failed:", error.message);
+    } else {
+      console.error("AI parsing error:", error.message);
+    }
+    return [];
   }
 };
 
