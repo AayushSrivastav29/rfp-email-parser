@@ -20,7 +20,7 @@ export async function saveEmail(parsedEmail) {
 
 export async function saveEmails(parsedTenders) {
   // exclude any tenders that doesnt have a tenderTitle, issuingAuthority, deadline, description
-  parsedTenders = parsedTenders.filter((t) => t.tenderTitle && t.issuingAuthority && t.deadline && t.description);
+  parsedTenders = parsedTenders.filter((t) => t.tenderTitle && t.issuingAuthority && (t.deadline || t.description));
 
   if (!Array.isArray(parsedTenders) || parsedTenders.length === 0) {
     console.warn("[EmailRepository] saveEmails called with empty array.");
