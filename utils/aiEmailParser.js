@@ -10,37 +10,41 @@ const geminiAI = new GoogleGenAI({
 // AI-powered parsing function
 export const aiEmailParser = async (TextBody) => {
   try {
-    const prompt = `Role: You are a highly accurate Procurement Data Extraction specialist. Your task is to parse inbound email TextBody from tender notification services and convert them into a valid JSON array of objects.
+    const prompt = `Role: You are a strict Procurement Auditor and Data Extraction specialist. Your task is to analyze inbound email TextBody to identify ONLY formal government or corporate procurement tenders (RFP, RFQ, RFT, IFB, or EOI).
 
-Input Format: You will receive a JSON TextBody from a Postmark inbound webhook.
+Definition of a Tender:
+A formal solicitation for the provision of goods or services. It MUST be an actionable bid opportunity where a company can submit a proposal. Formal types include Registration of Interest, Request for Proposal (RFP), Request for Quotation (RFQ), and Request for Tender (RFT).
+
+Exclusion Criteria (DO NOT EXTRACT):
+1. Events: Seminars, webinars, open houses, or networking meetups (e.g., "Pennovation Open House").
+2. Educational News: Industry reports, venture reports, or ecosystem updates.
+3. Competitions: Pitch competitions, "venture building weekends," or hackathons (e.g., "Road to the Lioncage").
+4. General Grants: Small seed grants for founders that do not follow a formal procurement bid process.
+5. Marketing: General "call for makers" or "call for speakers" for a faire or conference.
+6. Reminders: General Tenders deadlines reminders.
+
+Wait Test for Accuracy:
+Apply the "Wait Test" logic: If the section is a "Go Ahead" signal (confirming a news item or event), IGNORE it. If it is a "Stop & Turn" signal (a specific requirement or bid notice with a response deadline), EXTRACT it.
 
 Instructions:
+1. Analyze the TextBody field.
+2. Identify objects that meet the "Tender" definition and avoid all "Exclusion Criteria".
+3. If NO formal tenders are found, return an empty array.
+4. For each VALID tender, extract:
+   - tenderTitle: Specific name of the bid opportunity or title of the solicitation.
+   - issuingAuthority: The name of the agency, government body, or department that issued the bid.
+   - deadline: The response deadline or proposed deadline or closing date. Format as DD-MM-YYYY if possible.
+   - contractValue: Estimated budget or value of the tender (with currency).
+   - description: A technical summary of the scope of work.
+   - extractedLinks: The primary URL provided to view the notice or download the bid documents. Ignore any links related to 'Unsubscribe', 'Email Preferences', 'Account Settings', or 'Help Center'. Only extract URLs that link directly to a specific solicitation or project folder. The URL must NOT contain repeating patterns like "-2F4o-2F3o-2F4o" or similar encoded garbage loops.
 
-Analyze the TextBody field of the input JSON.
-
-Identify all individual contract opportunities (tenders) listed in the email.
-
-For each tender identified, extract the following specific fields:
-
-tenderTitle: The specific name or title of the solicitation.
-
-issuingAuthority: The name of the agency, government body, or department that issued the bid.
-
-deadline: The response deadline or proposed deadline or closing date. Format as DD-MM-YYYY if possible.
-
-contractValue: The estimated budget or value (if mentioned). Include the currency.
-
-description: An exact description of the tender mentioned in the input.
-
-extractedLinks: The primary URL provided to view the notice or download the bid documents. Ignore any links related to 'Unsubscribe', 'Email Preferences', 'Account Settings', or 'Help Center'. Only extract URLs that link directly to a specific solicitation or project folder. The URL must NOT contain repeating patterns like "-2F4o-2F3o-2F4o" or similar encoded garbage loops.
-
-Constraint: If a field is not present, set its value to null.
+Constraint: 
+- If a field is missing, set it to null.
 
 Output Format: Return ONLY a valid JSON array. Do not include conversational text, markdown formatting blocks, or explanations.
 
 Input Data:
-${JSON.stringify(TextBody)}
-`;
+${JSON.stringify(TextBody)}`;
     const response = await geminiAI.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [
